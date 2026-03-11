@@ -11,6 +11,7 @@ build/
 
 # Outputs (generated artifacts)
 plots/transformers/*
+plots/embeddings/*.png
 data/emebeddings/*
 
 # Trained model weights
