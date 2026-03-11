@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+
+# Outputs (generated artifacts)
+outputs/embeddings/*
+plots/transformers/*
+data/emebeddings/*
+
+# Trained model weights
+checkpoints/lstm/*.pt
+checkpoints/lstm/*.pth
+checkpoints/lstm/*.ckpt
+checkpoints/transformer/*.pt
+checkpoints/transformer/*.pth
+checkpoints/transformer/*.ckpt
+
+# NumPy binaries
+data/*.npy
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo

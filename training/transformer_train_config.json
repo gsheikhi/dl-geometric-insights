@@ -1,0 +1,23 @@
+{
+  "epochs": 400,
+  "batch_size": 8,
+  "learning_rate": 3e-4,
+  "lr_scheduler": "cosine",
+  "warmup_steps": 50,
+  "clip_grad_norm": 1.0,
+  "eval_every": 10,
+  "save_every": 50,
+  "output_dir": "checkpoints/transformer",
+  "plots_dir": "plots/transformer",
+  "checkpoint_path": "outputs/transformer/checkpoint.pt",
+  "data": {
+    "en_embeddings_path": "data/embeddings/en_embeddings.npz",
+    "tr_embeddings_path": "data/embeddings/tr_embeddings.npz",
+    "en_rope_pe_path":    "data/embeddings/en_rope_pe.npz",
+    "tr_rope_pe_path":    "data/embeddings/tr_rope_pe.npz",
+    "en_tokenised_path":  "data/en_tokenised.json",
+    "tr_tokenised_path":  "data/tr_tokenised.json",
+    "en_vocab_path":      "data/en_vocab.json",
+    "tr_vocab_path":      "data/tr_vocab.json"
+  }
+}

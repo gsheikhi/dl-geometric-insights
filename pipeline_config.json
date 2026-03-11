@@ -1,0 +1,28 @@
+{
+"tokeniser_config": {
+    "pad_token":   "<PAD>",
+    "unk_token":   "<UNK>",
+    "start_token": "<SOS>",
+    "end_token":   "<EOS>",
+    "sep_token":   "<SEP>",
+    "lower":       true
+    },
+"path_config": {
+    "corpus_path":              "data/corpus.json",
+    "en_vocab_path":            "data/en_vocab.json",
+    "tr_vocab_path":            "data/tr_vocab.json",
+    "en_tokenised_path":        "data/en_tokenised",
+    "tr_tokenised_path":        "data/tr_tokenised",
+    "embeddings_stem":          "data/embeddings",
+    "embedding_visuals_stem":   "plots/embeddings",
+    "lstm_visuals_stem":        "plots/lstm",
+    "transformer_visuals_stem": "plots/transformer"
+    },
+"embedding_config": {
+    "min_count":      2,
+    "embedding_dim":  20,
+    "window":         5,
+    "lr":             0.01,
+    "epochs":         1000       
+    }
+}
