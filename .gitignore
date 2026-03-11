@@ -10,7 +10,6 @@ build/
 .venv/
 
 # Outputs (generated artifacts)
-outputs/embeddings/*
 plots/transformers/*
 data/emebeddings/*
 

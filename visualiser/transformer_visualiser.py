@@ -11,28 +11,16 @@ CorpusActivationCollector
     meaningful word@position points enter the plots.
 
 CorpusVisualiser
-    Option 1 — full_corpus_stages()
-        One t-SNE scatter per stage, full population of word@position points.
-        Directly comparable to the existing pe_pipeline plots.
-
-    Option 3 — animated_trajectory()
-        Fits a single global t-SNE on all stages stacked together, then
-        saves per-stage frames as a GIF *and* as a self-contained HTML file
-        with a play/pause slider so students can scrub through the journey
-        interactively.
+    One t-SNE scatter per stage, full population of word@position points.
+    Directly comparable to the existing pe_pipeline plots.
 """
 
-import json
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 from sklearn.manifold import TSNE
 from pathlib import Path
-from typing import Optional
-import io, base64
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage ordering
@@ -279,8 +267,6 @@ class CorpusVisualiser:
         self.out_dir.mkdir(parents=True, exist_ok=True)
         self.perplexity = perplexity
 
-    # ── Option 1 ──────────────────────────────────────────────────────────────
-
     def full_corpus_stages(
         self,
         stage_data: dict,
@@ -316,184 +302,4 @@ class CorpusVisualiser:
             plt.close(fig)
             print(f"    saved --> {path.name}")
 
-    # ── Option 3 ──────────────────────────────────────────────────────────────
 
-    def animated_trajectory(
-        self,
-        stage_data: dict,
-        stage_order: list[str],
-        fps: int = 2,
-        gif_name: str = "trajectory.gif",
-        html_name: str = "trajectory.html",
-    ):
-        """
-        Fits one global t-SNE (all stages stacked --> shared coordinate system),
-        then saves:
-          • a GIF  — one frame per stage
-          • an HTML — self-contained, with a play/pause button and a scrub slider
-        """
-        present = [s for s in stage_order if s in stage_data]
-        print(f"  Fitting global t-SNE over {len(present)} stages…")
-        global_coords = _fit_global_tsne(stage_data, stage_order, self.perplexity)
-
-        # ── compute axis limits from ALL points so axes never jump ────────────
-        all_xy = np.vstack(list(global_coords.values()))
-        pad    = (all_xy.max(0) - all_xy.min(0)) * 0.08
-        xlim   = (all_xy[:, 0].min() - pad[0], all_xy[:, 0].max() + pad[0])
-        ylim   = (all_xy[:, 1].min() - pad[1], all_xy[:, 1].max() + pad[1])
-
-        # ── GIF ───────────────────────────────────────────────────────────────
-        self._save_gif(present, global_coords, stage_data,
-                       xlim, ylim, fps, gif_name)
-
-        # ── HTML ──────────────────────────────────────────────────────────────
-        self._save_html(present, global_coords, stage_data,
-                        xlim, ylim, fps, html_name)
-
-    # ── GIF builder ───────────────────────────────────────────────────────────
-
-    def _make_frame(
-        self,
-        stage: str,
-        coords: np.ndarray,
-        labels: list[str],
-        xlim: tuple,
-        ylim: tuple,
-        frame_idx: int,
-        total: int,
-    ) -> plt.Figure:
-        fig, ax = plt.subplots(figsize=(11, 8))
-        colour  = _stage_colour(stage)
-        ax.scatter(coords[:, 0], coords[:, 1],
-                   c=colour, s=50, alpha=0.78, edgecolors="k", linewidths=0.3,
-                   zorder=3)
-        for i, lbl in enumerate(labels):
-            ax.annotate(lbl, coords[i], fontsize=6.5, alpha=0.87,
-                        textcoords="offset points", xytext=(3, 3), zorder=4)
-        nice = stage.replace("_", " ")
-        ax.set_title(f"Stage {frame_idx+1}/{total}:  {nice}", fontsize=11, pad=10)
-        ax.set_xlim(*xlim); ax.set_ylim(*ylim)
-        ax.set_xlabel("t-SNE 1"); ax.set_ylabel("t-SNE 2")
-        ax.grid(True, linestyle="--", alpha=0.25)
-        fig.tight_layout()
-        return fig
-
-    def _save_gif(self, present, global_coords, stage_data,
-                  xlim, ylim, fps, gif_name):
-        frames = []
-        for i, stage in enumerate(present):
-            fig = self._make_frame(
-                stage, global_coords[stage], stage_data[stage]["labels"],
-                xlim, ylim, i, len(present)
-            )
-            buf = io.BytesIO()
-            fig.savefig(buf, format="png", dpi=120, bbox_inches="tight")
-            plt.close(fig)
-            buf.seek(0)
-            frames.append(plt.imread(buf))
-
-        if not frames:
-            return
-        h, w = frames[0].shape[:2]
-        fig, ax = plt.subplots(figsize=(w / 120, h / 120))
-        ax.axis("off")
-        ims = [[ax.imshow(f, animated=True)] for f in frames]
-        ani = animation.ArtistAnimation(fig, ims,
-                                        interval=int(1000 / fps),
-                                        blit=True, repeat=True)
-        path = self.out_dir / gif_name
-        ani.save(str(path), writer="pillow", fps=fps)
-        plt.close(fig)
-        print(f"    saved --> {path.name}")
-
-    # ── HTML builder ──────────────────────────────────────────────────────────
-
-    def _save_html(self, present, global_coords, stage_data,
-                   xlim, ylim, fps, html_name):
-        """
-        Encodes each frame as a base64 PNG and inlines them all in a single
-        HTML file with a JS play/pause slider.  No external dependencies.
-        """
-        b64_frames = []
-        for i, stage in enumerate(present):
-            fig = self._make_frame(
-                stage, global_coords[stage], stage_data[stage]["labels"],
-                xlim, ylim, i, len(present)
-            )
-            buf = io.BytesIO()
-            fig.savefig(buf, format="png", dpi=110, bbox_inches="tight")
-            plt.close(fig)
-            buf.seek(0)
-            b64_frames.append(base64.b64encode(buf.read()).decode())
-
-        stage_names_js = json.dumps([s.replace("_", " ") for s in present])
-        frames_js      = json.dumps(b64_frames)
-
-        html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Transformer Embedding Trajectory</title>
-<style>
-  body  {{ font-family: sans-serif; background: #1a1a2e; color: #eee;
-           display: flex; flex-direction: column; align-items: center;
-           padding: 24px; }}
-  h2    {{ margin-bottom: 6px; letter-spacing: 1px; }}
-  #stage-label {{ font-size: 1.1em; color: #90caf9; margin: 8px 0 14px; min-height: 1.4em; }}
-  img   {{ max-width: 900px; width: 100%; border-radius: 8px;
-           box-shadow: 0 4px 24px #0006; }}
-  .controls {{ margin-top: 18px; display: flex; gap: 14px; align-items: center; }}
-  button {{ padding: 8px 22px; border-radius: 6px; border: none; cursor: pointer;
-            background: #1976d2; color: #fff; font-size: 1em; }}
-  button:hover {{ background: #1565c0; }}
-  input[type=range] {{ width: 480px; accent-color: #90caf9; }}
-  #counter {{ min-width: 80px; text-align: center; color: #aaa; font-size: 0.9em; }}
-</style>
-</head>
-<body>
-<h2>Transformer — Embedding Space Trajectory</h2>
-<div id="stage-label">–</div>
-<img id="frame-img" src="" alt="frame">
-<div class="controls">
-  <button id="btn-play">▶ Play</button>
-  <input type="range" id="slider" min="0" max="{len(present)-1}" value="0" step="1">
-  <span id="counter">1 / {len(present)}</span>
-</div>
-
-<script>
-const frames     = {frames_js};
-const stageNames = {stage_names_js};
-const img        = document.getElementById('frame-img');
-const slider     = document.getElementById('slider');
-const label      = document.getElementById('stage-label');
-const counter    = document.getElementById('counter');
-const btn        = document.getElementById('btn-play');
-let cur = 0, timer = null;
-
-function show(i) {{
-  cur = i;
-  img.src = 'data:image/png;base64,' + frames[i];
-  label.textContent = stageNames[i];
-  counter.textContent = (i+1) + ' / ' + frames.length;
-  slider.value = i;
-}}
-
-function step() {{
-  show((cur + 1) % frames.length);
-}}
-
-btn.addEventListener('click', () => {{
-  if (timer) {{ clearInterval(timer); timer = null; btn.textContent = '▶ Play'; }}
-  else       {{ timer = setInterval(step, {int(1000/fps)}); btn.textContent = '⏸ Pause'; }}
-}});
-
-slider.addEventListener('input', () => show(parseInt(slider.value)));
-
-show(0);
-</script>
-</body>
-</html>"""
-
-        path = self.out_dir / html_name
-        path.write_text(html, encoding="utf-8")
-        print(f"    saved --> {path.name}")

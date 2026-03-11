@@ -184,17 +184,9 @@ def train(model_cfg_path: str, train_cfg_path: str):
     plots_dir  = Path(train_cfg["plots_dir"])
     corpus_vis = CorpusVisualiser(out_dir=plots_dir, perplexity=15)
 
-    print("\nOption 1 — full corpus stage plots…")
+    print("\nFull corpus stage plots…")
     corpus_vis.full_corpus_stages(stage_data, stage_order,
                                   title_prefix="Full corpus | ")
-
-    print("\nOption 3 — animated trajectory…")
-    corpus_vis.animated_trajectory(
-        stage_data, stage_order,
-        fps=2,
-        gif_name="trajectory.gif",
-        html_name="trajectory.html",
-    )
 
     print(f"\nAll plots saved to: {plots_dir}")
 
